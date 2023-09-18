@@ -1,6 +1,6 @@
 const btnGlobe = document.querySelector("#btnGlobe"),
     btnGallery = document.querySelector("#btnGallery"),
-    globe3D = document.querySelector(".canvas-3dglobe-container"),
+    globeContainer = document.querySelector(".fs-globe-container"),
     gridContainer = document.querySelector(".grid-container");
 
 function FsGlobe() {
@@ -68,7 +68,7 @@ function FsGlobe() {
         
     function handleBtnGlobeClick() {
         s.autoRotate = true;
-        globe3D.classList.remove("paused");
+        globeContainer.classList.remove("paused");
         gridContainer.classList.remove("active");
         btnGlobe.classList.add("active");
         btnGallery.classList.remove("active");
@@ -76,7 +76,7 @@ function FsGlobe() {
     
     function handleBtnGalleryClick() {
         s.autoRotate = false;
-        globe3D.classList.add("paused");
+        globeContainer.classList.add("paused");
         gridContainer.classList.add("active");
         btnGallery.classList.add("active");
         btnGlobe.classList.remove("active");
