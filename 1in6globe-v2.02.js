@@ -1,7 +1,8 @@
-const btnGlobe = document.querySelector("#btnGlobe"),
-  btnGallery = document.querySelector("#btnGallery"),
-  globeContainer = document.querySelector(".fs-globe-container"),
-  gridContainer = document.querySelector(".grid-container");
+const globeContainer = document.querySelector(".fs-globe-container");
+const gridContainer = document.querySelector(".grid-container");
+
+// Webflow tab pane waar de globe in zit:
+const globeTabPane = document.querySelector(".tab-pane-globe");
 
 function FsGlobe() {
   const e = document.querySelector("[fs-3dglobe-element='container']"),
@@ -20,9 +21,7 @@ function FsGlobe() {
   const l = [].slice.call(
       document.querySelectorAll("[fs-3dglobe-element='tooltip']")
     ),
-    a = [].slice.call(
-      document.querySelectorAll("[fs-3dglobe-element='pin']")
-    ),
+    a = [].slice.call(document.querySelectorAll("[fs-3dglobe-element='pin']")),
     i = new THREE.WebGLRenderer({ canvas: o, alpha: !0 }),
     r = new THREE.PerspectiveCamera(60, 2, 0.1, 10);
 
@@ -131,38 +130,48 @@ function FsGlobe() {
     v = 20,
     w = -0.08;
 
-  // ---- TAB/GALLERY STATE ----
-  let isGlobeActive = true; // globe-modus is default actief
+  // ---- TAB STATE (Webflow Tabs) ----
+  // Dit bepaalt of de globe "mag" roteren (tab zichtbaar) los van hover-pauze.
+  let isGlobeTabActive = true;
 
-  function handleBtnGlobeClick() {
-    isGlobeActive = true;
-    s.autoRotate = true;
-    globeContainer.classList.remove("paused");
-    gridContainer.classList.remove("active");
-    btnGlobe.classList.add("active");
-    btnGallery.classList.remove("active");
+  function setGlobeTabActive(active) {
+    isGlobeTabActive = active;
 
-    // optioneel: forceer 1x resize/reflow als tab net zichtbaar werd
+    if (!active) {
+      // tab weg: stop rotatie (scheelt CPU)
+      s.autoRotate = false;
+      return;
+    }
+
+    // tab zichtbaar:
+    // Alleen laten roteren als je niet in "paused" state zit (bijv. door gallery)
+    if (!globeContainer.classList.contains("paused")) {
+      s.autoRotate = true;
+    }
+
+    // Heel belangrijk: zodra pane zichtbaar is, even resizen/re-renderen
     requestAnimationFrame(() => R());
+    // soms is 2x een tick nodig bij Webflow tabs:
+    requestAnimationFrame(() => requestAnimationFrame(() => R()));
   }
 
-  function handleBtnGalleryClick() {
-    isGlobeActive = false;
-    s.autoRotate = false;
-    globeContainer.classList.add("paused");
-    gridContainer.classList.add("active");
-    btnGallery.classList.add("active");
-    btnGlobe.classList.remove("active");
-  }
+  // Init op basis van huidige class (als pagina laadt met tab al actief)
+  if (globeTabPane) {
+    setGlobeTabActive(globeTabPane.classList.contains("w--tab-active"));
 
-  btnGlobe.addEventListener("click", handleBtnGlobeClick);
-  btnGallery.addEventListener("click", handleBtnGalleryClick);
+    // Observeer class changes op het tab pane
+    const mo = new MutationObserver(() => {
+      const activeNow = globeTabPane.classList.contains("w--tab-active");
+      setGlobeTabActive(activeNow);
+    });
+
+    mo.observe(globeTabPane, { attributes: true, attributeFilter: ["class"] });
+  }
 
   // ---- FIX: delegated hover (werkt ook als map-container later in DOM komt) ----
-  // pointerover/out bubbelen wél; mouseenter/leave niet.
   globeContainer.addEventListener("pointerover", (ev) => {
     if (ev.target.closest(".map-container")) {
-      s.autoRotate = false; // pauzeer rotatie
+      s.autoRotate = false;
     }
   });
 
@@ -170,10 +179,9 @@ function FsGlobe() {
     const fromPin = ev.target.closest(".map-container");
     const toPin = ev.relatedTarget && ev.relatedTarget.closest(".map-container");
 
-    // Alleen als je echt van de pin af gaat (niet naar een child element)
     if (fromPin && !toPin) {
-      // alleen hervatten als globe modus actief is en niet "paused" door gallery
-      if (isGlobeActive && !globeContainer.classList.contains("paused")) {
+      // alleen hervatten als tab actief is én niet paused door andere UI-state
+      if (isGlobeTabActive && !globeContainer.classList.contains("paused")) {
         s.autoRotate = true;
       }
     }
@@ -191,9 +199,10 @@ function FsGlobe() {
       return l && e.setSize(n, o, !1), l;
     })(i);
 
+    // als canvas nog 0x0 is (tab hidden), skip aspect update
     if (i.domElement.clientWidth && i.domElement.clientHeight) {
-      const e = i.domElement;
-      r.aspect = e.clientWidth / e.clientHeight;
+      const el = i.domElement;
+      r.aspect = el.clientWidth / el.clientHeight;
       r.updateProjectionMatrix();
     }
 
@@ -253,15 +262,12 @@ function FsGlobe() {
 
 function getInfoBox({ url: e, name: t, location: n = "N/A", role: o = "N/A" }) {
   return `
-
   <div style=" border: 1px solid #dadce0; border-radius: 8px; overflow: hidden;">
     <div class="caption">
       <img src="${e}" style="height: 200px; max-width:600px;" />
     </div>
     <div style="padding:5px 10px">
-      <div>
-        <strong>${t}</strong>
-      </div>
+      <div><strong>${t}</strong></div>
       <div>Javascript, Node.js</div>
       <div>${n}</div>
     </div>
